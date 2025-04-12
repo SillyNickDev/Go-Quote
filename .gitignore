@@ -1,3 +1,5 @@
 go-que
 start
 main.go.bak
+quotes.db
+.env
