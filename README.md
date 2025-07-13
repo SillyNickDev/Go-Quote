@@ -54,7 +54,7 @@ You’ll get a `go-quote` binary you can run directly.
 ./go-quote -mode twitch -user your_bot_username -oauth oauth:yourtoken -channel yourchannel
 ```
 
-> You’ll need a [Twitch IRC token](https://twitchapps.com/tmi/) for this to work.
+> You’ll need a [Twitch IRC token](https://antiscuff.com/oauth/) for this to work.
 
 ---
 
