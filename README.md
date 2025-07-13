@@ -32,17 +32,17 @@ It's fast, tiny, and OS-agnostic — works on Linux, Windows, macOS, or even Ras
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/yourusername/twitch-quote-bot.git
-cd twitch-quote-bot
+git clone https://github.com/yourusername/go-quote
+cd go-quote
 ````
 
 ### 2. Build it
 
 ```bash
-go build -o twitchquote .
+go build  .
 ```
 
-You’ll get a `twitchquote` binary you can run directly.
+You’ll get a `go-quote` binary you can run directly.
 
 ---
 
@@ -51,7 +51,7 @@ You’ll get a `twitchquote` binary you can run directly.
 ### Twitch Mode (Connects to chat)
 
 ```bash
-./twitchquote -mode twitch -user your_bot_username -oauth oauth:yourtoken -channel yourchannel
+./go-quote -mode twitch -user your_bot_username -oauth oauth:yourtoken -channel yourchannel
 ```
 
 > You’ll need a [Twitch IRC token](https://twitchapps.com/tmi/) for this to work.
@@ -61,7 +61,7 @@ You’ll get a `twitchquote` binary you can run directly.
 ### CLI Mode (Local DB testing)
 
 ```bash
-./twitchquote -mode cli
+./go-quote -mode cli
 ```
 
 You’ll get a prompt for adding, listing, or searching quotes.
