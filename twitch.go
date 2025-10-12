@@ -19,6 +19,8 @@ type TwitchBot struct {
 	maxRetryDelay time.Duration
 }
 
+// NewTwitchBot creates and configures a TwitchBot for the given IRC client, command handler, and channel.
+// It initializes default retry delays and registers client event handlers for connect, reconnect, notice, and private messages so incoming messages are passed to the CommandHandler.
 func NewTwitchBot(client *twitch.Client, handler *CommandHandler, channel string) *TwitchBot {
 	bot := &TwitchBot{
 		client:        client,
@@ -87,6 +89,9 @@ func (b *TwitchBot) Run(ctx context.Context) error {
 	}
 }
 
+// configureTwitchClient creates and returns a Twitch IRC client configured for Twitch chat.
+// It enables TLS, applies the library's default capabilities, sets the Twitch IRC address,
+// clears any setup command, and assigns the default rate limiter so the client is ready to connect.
 func configureTwitchClient(user, oauth string) *twitch.Client {
 	client := twitch.NewClient(user, oauth)
 	client.TLS = true
@@ -97,6 +102,8 @@ func configureTwitchClient(user, oauth string) *twitch.Client {
 	return client
 }
 
+// validateTwitchConfig verifies that the Twitch user, OAuth token, and channel are provided.
+// It returns an error describing the missing credentials if any of the three values are empty.
 func validateTwitchConfig(user, oauth, channel string) error {
 	if user == "" || oauth == "" || channel == "" {
 		return fmt.Errorf("twitch credentials (user, oauth, channel) must be provided in twitch mode")
