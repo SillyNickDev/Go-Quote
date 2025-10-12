@@ -13,6 +13,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// main parses command-line flags, initializes application state (QuoteStore and CommandHandler),
+// and runs either the CLI or the Twitch bot based on the -mode flag.
+// It creates a context canceled on OS interrupt/SIGTERM to allow graceful shutdown.
 func main() {
 	var (
 		dbPath        string

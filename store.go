@@ -28,7 +28,7 @@ type QuoteStore struct {
 	random *rand.Rand
 }
 
-// NewQuoteStore opens (or creates) the SQLite database and creates the quotes table if needed.
+// Returns a non-nil error if the database cannot be opened, pinged, or initialized (table creation).
 func NewQuoteStore(ctx context.Context, dbPath string) (*QuoteStore, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -74,6 +74,8 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
+// parseSQLiteTime parses a timestamp string using several known layouts in the local time zone.
+// Supported layouts are "2006-01-02 15:04:05", time.RFC3339Nano, and time.RFC3339; it returns the parsed time or an error if the format is unsupported.
 func parseSQLiteTime(value string) (time.Time, error) {
 	layouts := []string{
 		"2006-01-02 15:04:05",
@@ -88,6 +90,8 @@ func parseSQLiteTime(value string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unsupported timestamp format: %q", value)
 }
 
+// scanQuote scans a rowScanner into a Quote and parses its created timestamp.
+// It returns the populated Quote on success or an error if scanning the row or parsing the creation time fails.
 func scanQuote(scanner rowScanner) (Quote, error) {
 	var q Quote
 	var created string

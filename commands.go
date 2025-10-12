@@ -14,6 +14,8 @@ type CommandHandler struct {
 	store *QuoteStore
 }
 
+// NewCommandHandler returns a new CommandHandler that uses the provided QuoteStore.
+// Pass a non-nil store to enable quote operations; a nil store will leave the handler misconfigured.
 func NewCommandHandler(store *QuoteStore) *CommandHandler {
 	return &CommandHandler{store: store}
 }
@@ -145,10 +147,12 @@ func (h *CommandHandler) Handle(ctx context.Context, message, user string) []str
 	}
 }
 
+// formatQuote formats a Quote as a single-line string in the form `#<ID>: "<Text>" - <Author>`.
 func formatQuote(q Quote) string {
 	return fmt.Sprintf("#%d: \"%s\" - %s", q.ID, q.Text, q.Author)
 }
 
+// printHelp returns the usage help text for the !quote command and its subcommands.
 func printHelp() string {
 	return `Usage:
 !quote              - Return a random quote.
@@ -163,6 +167,7 @@ func printHelp() string {
 !quote help        - Show this help message.`
 }
 
+// pluralize returns the singular form when count is 1 and the plural form otherwise.
 func pluralize(single, plural string, count int) string {
 	if count == 1 {
 		return single
@@ -170,6 +175,8 @@ func pluralize(single, plural string, count int) string {
 	return plural
 }
 
+// pluralSuffix returns the plural suffix for a count: an empty string when count is 1,
+// otherwise "s".
 func pluralSuffix(count int) string {
 	if count == 1 {
 		return ""

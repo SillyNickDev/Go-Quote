@@ -10,6 +10,11 @@ import (
 	"strings"
 )
 
+// runCLI starts an interactive command-line loop that accepts user commands to manage quotes
+// using the provided QuoteStore and delegates unrecognized commands to the provided CommandHandler.
+// It prompts on stdin for commands (add, random, search, get, latest, count, list, delete, help, exit),
+// performs the corresponding store operations, prints results to stdout, and returns when the user
+// issues "exit" or when an input error occurs.
 func runCLI(ctx context.Context, store *QuoteStore, handler *CommandHandler) {
 	reader := bufio.NewReader(os.Stdin)
 	for {
