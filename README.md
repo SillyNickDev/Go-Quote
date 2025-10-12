@@ -18,7 +18,11 @@ It's fast, tiny, and OS-agnostic — works on Linux, Windows, macOS, or even Ras
 ## ⚙️ Features
 
 - 🎤 `!quote add <text>` — Add a new quote
+- ✍️ `!quote add <author> | <text>` — Attribute a quote to someone else on the fly
 - ❓ `!quote search <term>` — Find a quote by text or author
+- 🔢 `!quote get <id>` — Fetch a specific quote by number
+- 🆕 `!quote latest` — Show the most recently added quote
+- 📊 `!quote count` — Display how many quotes are saved
 - 🎲 `!quote` — Grab a random quote
 - 📜 `!quote list` — List the first 5 quotes
 - ❌ `!quote delete <id>` — Remove a quote (mod-only suggested)
