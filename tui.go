@@ -19,17 +19,21 @@ type tuiApp struct {
 	config       AppConfig
 	status       *tview.TextView
 	logView      *tview.TextView
+	header       *tview.TextView
+	footer       *tview.TextView
 	modeDrop     *tview.DropDown
 	dbField      *tview.InputField
 	userField    *tview.InputField
 	oauthField   *tview.InputField
 	channelField *tview.InputField
 	logSink      *tuiLogSink
+	shortcutLine string
 
-	mu        sync.Mutex
-	store     *QuoteStore
-	lastCount int
-	ctx       context.Context
+	mu          sync.Mutex
+	store       *QuoteStore
+	lastCount   int
+	lastRefresh time.Time
+	ctx         context.Context
 }
 
 // runTUI launches an interactive terminal UI for configuring and monitoring the quote bot.
@@ -37,16 +41,22 @@ type tuiApp struct {
 // tails logs, and polls the database for health and activity changes.
 func runTUI(ctx context.Context, cfg AppConfig) error {
 	app := tview.NewApplication()
+	header := buildHeaderBar()
 	status := buildStatusView()
 	logView := buildLogView()
+	shortcutLine := formatShortcutLine()
+	footer := buildFooterBar(shortcutLine)
 
 	tui := &tuiApp{
-		app:       app,
-		config:    cfg,
-		status:    status,
-		logView:   logView,
-		lastCount: -1,
-		ctx:       ctx,
+		app:          app,
+		config:       cfg,
+		header:       header,
+		status:       status,
+		logView:      logView,
+		footer:       footer,
+		shortcutLine: shortcutLine,
+		lastCount:    -1,
+		ctx:          ctx,
 	}
 
 	tui.logSink = newTUILogSink(app, logView, 400)
@@ -60,30 +70,56 @@ func runTUI(ctx context.Context, cfg AppConfig) error {
 		AddItem(status, 0, 1, false).
 		AddItem(logView, 0, 2, false)
 
-	root := tview.NewFlex().
-		AddItem(form, 0, 1, true).
-		AddItem(right, 0, 2, false)
+	body := tview.NewGrid().
+		SetRows(0).
+		SetColumns(48, 1, 0).
+		AddItem(form, 0, 0, 1, 1, 0, 0, true).
+		AddItem(tview.NewBox(), 0, 1, 1, 1, 0, 0, false).
+		AddItem(right, 0, 2, 1, 1, 0, 0, false)
 
-	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch {
-		case event.Key() == tcell.KeyCtrlC, event.Rune() == 'q':
-			app.Stop()
-			return nil
-		case event.Rune() == 'r':
-			go tui.refreshHealth()
-			return nil
-		}
-		return event
-	})
+	root := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(header, 3, 0, false).
+		AddItem(body, 0, 1, true).
+		AddItem(footer, 2, 0, false)
+
+	app.SetInputCapture(tui.captureKeys)
 
 	go tui.healthLoop()
 	tui.logf("TUI started (mode=%s, db=%s, channel=%s)", cfg.Mode, cfg.DBPath, cfg.TwitchChannel)
+	tui.renderHeader(cfg, -1, nil)
+	tui.flashFooter("Ready. Tab through fields, Ctrl+S to save, Ctrl+R to refresh.")
 
 	if err := app.SetRoot(root, true).EnableMouse(true).Run(); err != nil {
 		return fmt.Errorf("running TUI: %w", err)
 	}
 	tui.closeStore()
 	return nil
+}
+
+func (t *tuiApp) captureKeys(event *tcell.EventKey) *tcell.EventKey {
+	switch {
+	case event.Key() == tcell.KeyCtrlC || event.Key() == tcell.KeyCtrlQ || event.Rune() == 'q':
+		t.flashFooter("Exiting...")
+		t.app.Stop()
+		return nil
+	case event.Key() == tcell.KeyCtrlS:
+		t.saveConfig()
+		return nil
+	case event.Key() == tcell.KeyCtrlR:
+		go t.refreshHealth()
+		t.flashFooter("Manual health refresh.")
+		return nil
+	case event.Key() == tcell.KeyCtrlL:
+		t.app.SetFocus(t.logView)
+		t.flashFooter("Focused logs. Use PgUp/PgDn to scroll.")
+		return nil
+	case event.Key() == tcell.KeyCtrlF:
+		t.app.SetFocus(t.modeDrop)
+		t.flashFooter("Focused form. Use Tab/Shift+Tab to move.")
+		return nil
+	}
+	return event
 }
 
 func (t *tuiApp) healthLoop() {
@@ -146,6 +182,7 @@ func (t *tuiApp) saveConfig() {
 	cfg := t.collectConfig()
 	if err := saveConfigFile(configFileName, cfg); err != nil {
 		t.logf("Failed saving config: %v", err)
+		t.flashFooter("Failed to save config. Check file permissions.")
 		return
 	}
 
@@ -154,8 +191,10 @@ func (t *tuiApp) saveConfig() {
 	t.lastCount = -1
 	t.closeStoreLocked()
 	t.mu.Unlock()
+	t.renderHeader(cfg, t.lastCount, nil)
 
 	t.logf("Config saved to %s (mode=%s, channel=%s, db=%s)", configFileName, cfg.Mode, cfg.TwitchChannel, cfg.DBPath)
+	t.flashFooter("Config saved. Refreshing health...")
 	go t.refreshHealth()
 }
 
@@ -198,27 +237,38 @@ func (t *tuiApp) refreshHealth() {
 }
 
 func (t *tuiApp) renderStatus(cfg AppConfig, count int, latest *Quote, err error) {
+	refreshedAt := time.Now()
+	t.mu.Lock()
+	t.lastRefresh = refreshedAt
+	t.mu.Unlock()
+
 	var sb strings.Builder
-	sb.WriteString("[::b]Setup & Health[::-]\n")
-	sb.WriteString(fmt.Sprintf("Mode: %s\n", strings.ToLower(cfg.Mode)))
-	sb.WriteString(fmt.Sprintf("DB: %s\n", cfg.DBPath))
+	sb.WriteString("[::b]Connection[::-]\n")
+	sb.WriteString(fmt.Sprintf("• Mode: [white]%s[-]\n", strings.ToLower(cfg.Mode)))
+	sb.WriteString(fmt.Sprintf("• DB: [white]%s[-]\n", cfg.DBPath))
 	if cfg.Mode == "twitch" {
-		sb.WriteString(fmt.Sprintf("Twitch: %s @ #%s\n", emptyPlaceholder(cfg.TwitchUser), emptyPlaceholder(cfg.TwitchChannel)))
+		sb.WriteString(fmt.Sprintf("• Twitch: [white]%s[-] @ #%s\n", emptyPlaceholder(cfg.TwitchUser), emptyPlaceholder(cfg.TwitchChannel)))
 	}
+
+	sb.WriteString("\n[::b]Health[::-]\n")
 	if err != nil {
-		sb.WriteString(fmt.Sprintf("[red]Database error: %v[-]\n", err))
+		sb.WriteString(fmt.Sprintf("[red::b]Database error[-]: %v\n", err))
+		sb.WriteString("Check the DB path, permissions, or try a manual refresh (Ctrl+R).\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("[green]Database healthy[-] | Quotes: %d\n", max(count, 0)))
+		sb.WriteString(fmt.Sprintf("[green]OK[-] • Quotes: %d\n", max(count, 0)))
 		if latest != nil {
 			sb.WriteString(fmt.Sprintf("Latest: #%d by %s at %s\n", latest.ID, latest.Author, latest.CreatedAt.Format(time.RFC822)))
+		} else {
+			sb.WriteString("No quotes stored yet.\n")
 		}
 	}
-	sb.WriteString("\nKeys: [q] quit  [r] refresh  [Save config] button\n")
+	sb.WriteString(fmt.Sprintf("\nChecked at %s • auto refresh every 3s\n", refreshedAt.Format("15:04:05")))
 
 	text := sb.String()
 	t.app.QueueUpdateDraw(func() {
 		t.status.SetText(text)
 	})
+	t.renderHeader(cfg, count, latest)
 }
 
 func (t *tuiApp) detectChanges(count int, latest *Quote) {
@@ -338,6 +388,85 @@ func buildLogView() *tview.TextView {
 		view.ScrollToEnd()
 	})
 	return view
+}
+
+func buildHeaderBar() *tview.TextView {
+	view := tview.NewTextView()
+	view.SetDynamicColors(true)
+	view.SetWrap(true)
+	view.SetTextAlign(tview.AlignLeft)
+	view.SetBorder(false)
+	view.SetBackgroundColor(tcell.ColorDarkCyan)
+	view.SetTextColor(tcell.ColorWhite)
+	return view
+}
+
+func buildFooterBar(shortcuts string) *tview.TextView {
+	view := tview.NewTextView()
+	view.SetDynamicColors(true)
+	view.SetWrap(false)
+	view.SetTextAlign(tview.AlignLeft)
+	view.SetBorder(false)
+	view.SetBackgroundColor(tcell.ColorDarkGray)
+	view.SetTextColor(tcell.ColorWhite)
+	view.SetText(fmt.Sprintf("%s\n Ready.", shortcuts))
+	return view
+}
+
+func formatShortcutLine() string {
+	shortcuts := []struct {
+		key   string
+		label string
+	}{
+		{"^S", "Save"},
+		{"^R", "Refresh"},
+		{"^L", "Focus Logs"},
+		{"^F", "Focus Form"},
+		{"^Q", "Quit"},
+	}
+	var parts []string
+	for _, sc := range shortcuts {
+		parts = append(parts, fmt.Sprintf("[black:lightgray] %s [-:-] %s", sc.key, sc.label))
+	}
+	return strings.Join(parts, "  ")
+}
+
+func (t *tuiApp) flashFooter(msg string) {
+	t.app.QueueUpdateDraw(func() {
+		t.footer.SetText(fmt.Sprintf("%s\n %s", t.shortcutLine, msg))
+	})
+}
+
+func (t *tuiApp) renderHeader(cfg AppConfig, count int, latest *Quote) {
+	var latestLine string
+	switch {
+	case latest != nil:
+		latestLine = fmt.Sprintf("#%d %s - %s", latest.ID, truncate(latest.Text, 32), latest.Author)
+	case count >= 0:
+		latestLine = fmt.Sprintf("%d stored quotes", count)
+	default:
+		latestLine = "warming up..."
+	}
+
+	t.mu.Lock()
+	refreshed := t.lastRefresh
+	t.mu.Unlock()
+	lastTick := "not yet"
+	if !refreshed.IsZero() {
+		lastTick = refreshed.Format("15:04:05")
+	}
+
+	header := fmt.Sprintf(
+		"[black:lightcyan] GO-QUOTE TUI [-:-]  [white::b]Mode[-]: %s   [white::b]DB[-]: %s\n[white::b]Channel[-]: #%s   [white::b]Last refresh[-]: %s   [white::b]Latest[-]: %s",
+		strings.ToUpper(cfg.Mode),
+		cfg.DBPath,
+		emptyPlaceholder(cfg.TwitchChannel),
+		lastTick,
+		latestLine,
+	)
+	t.app.QueueUpdateDraw(func() {
+		t.header.SetText(header)
+	})
 }
 
 func truncate(text string, limit int) string {
