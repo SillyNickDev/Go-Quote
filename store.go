@@ -230,6 +230,46 @@ func (s *QuoteStore) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
+// UpdateText replaces the text of a quote while leaving the author unchanged.
+func (s *QuoteStore) UpdateText(ctx context.Context, id int, newText string) error {
+	newText = strings.TrimSpace(newText)
+	if newText == "" {
+		return fmt.Errorf("quote text cannot be empty")
+	}
+	res, err := s.db.ExecContext(ctx, "UPDATE quotes SET text = ? WHERE id = ?", newText, id)
+	if err != nil {
+		return fmt.Errorf("updating quote text: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("fetching affected rows: %w", err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("no quote with id %d found", id)
+	}
+	return nil
+}
+
+// UpdateAuthor replaces the author of a quote while leaving the text unchanged.
+func (s *QuoteStore) UpdateAuthor(ctx context.Context, id int, newAuthor string) error {
+	newAuthor = strings.TrimSpace(newAuthor)
+	if newAuthor == "" {
+		return fmt.Errorf("author cannot be empty")
+	}
+	res, err := s.db.ExecContext(ctx, "UPDATE quotes SET author = ? WHERE id = ?", newAuthor, id)
+	if err != nil {
+		return fmt.Errorf("updating quote author: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("fetching affected rows: %w", err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("no quote with id %d found", id)
+	}
+	return nil
+}
+
 // GetByID retrieves a quote using its ID.
 func (s *QuoteStore) GetByID(ctx context.Context, id int) (*Quote, error) {
 	row := s.db.QueryRowContext(ctx, "SELECT id, text, author, created_at FROM quotes WHERE id = ?", id)

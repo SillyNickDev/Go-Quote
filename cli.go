@@ -140,7 +140,7 @@ func runCLI(ctx context.Context, store *QuoteStore, handler *CommandHandler) {
 			return
 		default:
 			// Fallback to the shared handler for misc commands (e.g. !quote)
-			responses := handler.Handle(ctx, input, "CLI")
+			responses := handler.Handle(ctx, input, "CLI", true)
 			for _, resp := range responses {
 				fmt.Println(resp)
 			}

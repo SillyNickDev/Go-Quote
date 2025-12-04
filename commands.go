@@ -20,7 +20,7 @@ func NewCommandHandler(store *QuoteStore) *CommandHandler {
 	return &CommandHandler{store: store}
 }
 
-func (h *CommandHandler) Handle(ctx context.Context, message, user string) []string {
+func (h *CommandHandler) Handle(ctx context.Context, message, user string, isMod bool) []string {
 	if h == nil || h.store == nil {
 		return []string{"Quote handler is not configured"}
 	}
@@ -134,6 +134,9 @@ func (h *CommandHandler) Handle(ctx context.Context, message, user string) []str
 		if len(parts) < 3 {
 			return []string{"Usage: !quote delete <id>"}
 		}
+		if !isMod {
+			return []string{"Only Twitch moderators can delete quotes."}
+		}
 		id, err := strconv.Atoi(parts[2])
 		if err != nil {
 			return []string{"Invalid quote ID."}
@@ -142,6 +145,45 @@ func (h *CommandHandler) Handle(ctx context.Context, message, user string) []str
 			return []string{fmt.Sprintf("Error deleting quote #%d: %v", id, err)}
 		}
 		return []string{fmt.Sprintf("Quote #%d deleted.", id)}
+	case "edit":
+		if len(parts) < 4 {
+			return []string{"Usage: !quote edit <id> | <new quote text>"}
+		}
+		if !isMod {
+			return []string{"Only Twitch moderators can edit quotes."}
+		}
+		id, err := strconv.Atoi(parts[2])
+		if err != nil {
+			return []string{"Invalid quote ID."}
+		}
+		newText := strings.Join(parts[3:], " ")
+		newText = strings.TrimSpace(strings.TrimPrefix(newText, "|"))
+		if newText == "" {
+			return []string{"Usage: !quote edit <id> | <new quote text>"}
+		}
+		if err := h.store.UpdateText(ctx, id, newText); err != nil {
+			return []string{fmt.Sprintf("Error updating quote #%d: %v", id, err)}
+		}
+		return []string{fmt.Sprintf("Quote #%d updated.", id)}
+	case "setauthor", "author", "reauthor":
+		if len(parts) < 4 {
+			return []string{"Usage: !quote author <id> <new author>"}
+		}
+		if !isMod {
+			return []string{"Only Twitch moderators can change quote authors."}
+		}
+		id, err := strconv.Atoi(parts[2])
+		if err != nil {
+			return []string{"Invalid quote ID."}
+		}
+		newAuthor := strings.TrimSpace(strings.Join(parts[3:], " "))
+		if newAuthor == "" {
+			return []string{"Usage: !quote author <id> <new author>"}
+		}
+		if err := h.store.UpdateAuthor(ctx, id, newAuthor); err != nil {
+			return []string{fmt.Sprintf("Error changing author for quote #%d: %v", id, err)}
+		}
+		return []string{fmt.Sprintf("Quote #%d author updated to %s.", id, newAuthor)}
 	default:
 		return []string{printHelp()}
 	}
@@ -163,7 +205,9 @@ func printHelp() string {
 !quote list         - List the first 5 quotes.
 !quote latest       - Show the most recently added quote.
 !quote count        - Show how many quotes are stored.
-!quote delete <id>  - Delete a quote (moderator only).
+!quote delete <id>  - Delete a quote (Twitch moderator only).
+!quote edit <id> | <quote> - Update quote text (Twitch moderator only).
+!quote author <id> <author> - Change quote author (Twitch moderator only).
 !quote help        - Show this help message.`
 }
 

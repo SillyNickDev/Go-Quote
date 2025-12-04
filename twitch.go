@@ -66,7 +66,7 @@ func (b *TwitchBot) handleMessage(message twitch.PrivateMessage) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	responses := b.handler.Handle(ctx, message.Message, message.User.Name)
+	responses := b.handler.Handle(ctx, message.Message, message.User.Name, isModerator(message.User))
 	for _, response := range responses {
 		b.client.Say(message.Channel, response)
 	}
@@ -171,4 +171,17 @@ func validateTwitchConfig(user, oauth, channel string) error {
 		return fmt.Errorf("twitch credentials (user, oauth, channel) must be provided in twitch mode")
 	}
 	return nil
+}
+
+func isModerator(user twitch.User) bool {
+	if user.Badges == nil {
+		return false
+	}
+	if _, ok := user.Badges["broadcaster"]; ok {
+		return true
+	}
+	if _, ok := user.Badges["moderator"]; ok {
+		return true
+	}
+	return false
 }
