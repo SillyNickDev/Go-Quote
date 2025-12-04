@@ -32,7 +32,7 @@ type QuoteStore struct {
 
 // Returns a non-nil error if the database cannot be opened, pinged, or initialized (table creation).
 func NewQuoteStore(ctx context.Context, dbPath string) (*QuoteStore, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("opening db: %w", err)
 	}

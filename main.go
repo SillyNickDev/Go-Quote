@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // main parses command-line flags, initializes application state (QuoteStore and CommandHandler),
@@ -51,6 +51,10 @@ func main() {
 	switch strings.ToLower(config.Mode) {
 	case "cli":
 		runCLI(ctx, store, handler)
+	case "tui":
+		if err := runTUI(ctx, config); err != nil && !errors.Is(err, context.Canceled) {
+			log.Fatalf("Error running TUI: %v", err)
+		}
 	case "twitch":
 		if err := validateTwitchConfig(config.TwitchUser, config.TwitchOAuth, config.TwitchChannel); err != nil {
 			log.Fatal(err)

@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS quotes (
 ## Setup
 1) Clone
 ```bash
-git clone https://github.com/yourusername/go-quote
+git clone https://github.com/SillyNickDev/Go-Quote
 cd go-quote
 ```
 2) Build
@@ -54,12 +54,12 @@ Config values are merged in this order: defaults -> config file -> environment -
 - Keep `go-quote.config.json` and your OAuth token private.
 
 ### Twitch token
-Generate an IRC token (e.g., https://antiscuff.com/oauth/) and pass it as `oauth:yourtoken` to `-oauth` or `GOQUOTE_OAUTH`.
+Generate an IRC token (e.g., https://antiscuff.com/oauth/) and pass it as `oauth:token` to `-oauth` or `GOQUOTE_OAUTH`.
 
 ## Running
 ### Twitch mode (connect to chat)
 ```bash
-./go-quote -mode twitch -user your_bot_username -oauth oauth:yourtoken -channel yourchannel
+./go-quote -mode twitch -user your_bot_username -oauth oauth:token -channel channel
 ```
 The bot joins the channel, listens for `!quote` commands, and replies in chat.
 

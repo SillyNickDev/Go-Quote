@@ -4,3 +4,7 @@ main.go.bak
 quotes.db
 .env
 go-que.exe
+vendor
+go-quote.config.json
+go.sum
+go.sum

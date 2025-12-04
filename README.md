@@ -7,6 +7,7 @@ A lightweight Twitch IRC bot and CLI for capturing, searching, and managing stre
 ## Features
 - Chat-first `!quote` commands for add/search/random/get/list/latest/count, plus moderator-only edit/delete/author updates.
 - Interactive CLI mode that mirrors Twitch commands for local management.
+- TUI mode for quick setup, live DB health checks, and log tailing without typing commands.
 - SQLite-backed persistence (single file, no external services) with configurable database path.
 - Automatic configuration merge and persistence to `go-quote.config.json`, so credentials only need to be entered once.
 - TLS-enabled Twitch IRC client with reconnect and jittered backoff.
@@ -52,6 +53,15 @@ Connects to a channel and responds to chat commands.
 ./go-quote -mode twitch -user bot_username -oauth oauth:token -channel channel
 ```
 You can generate a Twitch IRC token from providers such as https://antiscuff.com/oauth/.
+
+### TUI mode
+Configure everything from a single screen, view DB health, and tail logs.
+```bash
+./go-quote -mode tui
+```
+- Update mode, DB path, and Twitch credentials from the form and hit **Save config** (writes `go-quote.config.json`).
+- Health panel polls the database (count + latest) every few seconds; press `r` to refresh manually.
+- Logs pane shows recent events (config saves, DB errors, quote count changes); press `q` or `Ctrl+C` to exit.
 
 ### CLI mode
 Runs an interactive prompt for local quote management.
