@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,8 +25,9 @@ var ErrNoQuotes = errors.New("no quotes available")
 
 // QuoteStore provides database backed persistence for quotes.
 type QuoteStore struct {
-	db     *sql.DB
-	random *rand.Rand
+	db       *sql.DB
+	random   *rand.Rand
+	randomMu sync.Mutex
 }
 
 // Returns a non-nil error if the database cannot be opened, pinged, or initialized (table creation).
@@ -144,7 +146,9 @@ func (s *QuoteStore) Random(ctx context.Context) (*Quote, error) {
 		return nil, ErrNoQuotes
 	}
 
+	s.randomMu.Lock()
 	offset := s.random.Intn(count)
+	s.randomMu.Unlock()
 	row := s.db.QueryRowContext(ctx, "SELECT id, text, author, created_at FROM quotes ORDER BY id LIMIT 1 OFFSET ?", offset)
 	q, err := scanQuote(row)
 	if err != nil {
