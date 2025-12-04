@@ -30,11 +30,17 @@ func main() {
 	flag.StringVar(&twitchChannel, "channel", "", "Twitch channel to join")
 	flag.StringVar(&mode, "mode", "twitch", "Mode: twitch or cli")
 	flag.Parse()
+	applyEnvDefaults(&mode, &dbPath, &twitchUser, &twitchOAuth, &twitchChannel)
+
+	config, err := setup(mode, dbPath, twitchUser, twitchOAuth, twitchChannel)
+	if err != nil {
+		log.Fatalf("Error during setup: %v", err)
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	store, err := NewQuoteStore(ctx, dbPath)
+	store, err := NewQuoteStore(ctx, config.DBPath)
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
 	}
@@ -42,20 +48,20 @@ func main() {
 
 	handler := NewCommandHandler(store)
 
-	switch strings.ToLower(mode) {
+	switch strings.ToLower(config.Mode) {
 	case "cli":
 		runCLI(ctx, store, handler)
 	case "twitch":
-		if err := validateTwitchConfig(twitchUser, twitchOAuth, twitchChannel); err != nil {
+		if err := validateTwitchConfig(config.TwitchUser, config.TwitchOAuth, config.TwitchChannel); err != nil {
 			log.Fatal(err)
 		}
-		client := configureTwitchClient(twitchUser, twitchOAuth)
-		bot := NewTwitchBot(client, handler, twitchChannel)
-		log.Printf("Connecting to Twitch channel #%s as %s...", twitchChannel, twitchUser)
+		client := configureTwitchClient(config.TwitchUser, config.TwitchOAuth)
+		bot := NewTwitchBot(client, handler, config.TwitchChannel)
+		log.Printf("Connecting to Twitch channel #%s as %s...", config.TwitchChannel, config.TwitchUser)
 		if err := bot.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			log.Fatalf("Error running Twitch bot: %v", err)
 		}
 	default:
-		log.Fatalf("Unknown mode: %s. Use 'twitch' or 'cli'.", mode)
+		log.Fatalf("Unknown mode: %s. Use 'twitch' or 'cli'.", config.Mode)
 	}
 }
