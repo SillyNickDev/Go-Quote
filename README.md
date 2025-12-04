@@ -19,11 +19,16 @@ A lightweight Twitch IRC bot and CLI for capturing, searching, and managing stre
 ## Install
 1) Clone the repository
 ```bash
-git clone https://github.com/yourusername/go-quote
+git clone https://github.com/SillyNickDev/Go-Quote
 cd go-quote
 ```
 
-2) Build
+2) Get the modules
+```bash
+go mod tidy
+```
+
+3) Build
 ```bash
 go build .
 ```
@@ -44,7 +49,7 @@ The app merges values from CLI flags, environment variables, and the persisted `
 ### Twitch mode
 Connects to a channel and responds to chat commands.
 ```bash
-./go-quote -mode twitch -user your_bot_username -oauth oauth:yourtoken -channel yourchannel
+./go-quote -mode twitch -user bot_username -oauth oauth:token -channel channel
 ```
 You can generate a Twitch IRC token from providers such as https://antiscuff.com/oauth/.
 
@@ -84,5 +89,5 @@ GPL — keep it open source and credit the project when used publicly.
 
 ## Contact
 - Twitch: https://twitch.tv/ItsNickDoberman
-- GitHub: https://github.com/sillynickdev5
+- GitHub: https://github.com/sillynickdev
 - Bluesky: https://bsky.app/profile/nickdoberman.xyz
